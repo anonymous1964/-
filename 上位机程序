@@ -1,0 +1,293 @@
+classdef App2 < matlab.apps.AppBase
+
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure          matlab.ui.Figure               % UI Figure
+        LabelDiscreteKnob matlab.ui.control.Label        % 速度控制
+        DiscreteKnob      matlab.ui.control.DiscreteKnob % Off, Low, Medium...
+        LabelLamp         matlab.ui.control.Label        % 启动灯
+        Lamp              matlab.ui.control.Lamp        
+        LabelToggleSwitch matlab.ui.control.Label        % 列车启动按钮
+        ToggleSwitch      matlab.ui.control.ToggleSwitch % 停车, 启动
+        LabelGauge        matlab.ui.control.Label        % 速度表
+        Gauge             matlab.ui.control.Gauge        % [0 400]
+        LabelLamp2        matlab.ui.control.Label        % 定速航行（可操作）
+        Lamp2             matlab.ui.control.Lamp        
+        LabelLamp3        matlab.ui.control.Label        % 速度警报
+        Lamp3             matlab.ui.control.Lamp        
+        Label             matlab.ui.control.Label        % 轨道交通车-地信息传输系统上位机
+    end
+
+
+
+    methods (Access = private)
+
+        % Code that executes after component creation
+        function startupFcn(app)
+            %未启动前初始化灯1亮红灯，灯2亮红灯
+            app.Lamp.Color='red';
+            app.Lamp2.Color='red';
+        end
+
+        % DiscreteKnob value changed function
+        function DiscreteKnobValueChanged(app)
+            value = app.DiscreteKnob.Value;%设置value的值对应速度控制盘的值
+            if(app.ToggleSwitch.Value=='启动')%当开关启动时
+                if(value=='1')%当速度控制盘的值对应high速
+                    if( app.Gauge.Value~=360)%定速360
+                        app.Lamp2.Color='red';
+                    end
+                    sr3 = serial('COM5'); % 使用默认设置创建串口sr3
+                    fopen(sr3); %打开串口
+                    fprintf(sr3,'1'); % 给串口写入数据
+                    fclose(sr3); %关闭串口
+                    delete(sr3);
+                    clear sr3;
+                    if(0<=app.Gauge.Value&&app.Gauge.Value<360)
+                        for i=1:10
+                            app.Gauge.Value= app.Gauge.Value+40;
+                            pause(1);
+                            if(app.Gauge.Value>320)%速度超过320报警
+                                app.Lamp3.Color='red';
+                            end
+                            if(app.Gauge.Value==360)
+                                app.Lamp2.Color='green';
+                                return;
+                            end
+                        end
+                    end
+                 end
+            end
+                
+                
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%        
+                if(value=='2')%当速度控制盘的值对应medium速
+                    if( app.Gauge.Value~=240)%定速240
+                        app.Lamp2.Color='red';
+                    end
+                 
+                    sr3 = serial('COM5'); % 使用默认设置创建串口sr3
+                    fopen(sr3); %打开串口
+                    fprintf(sr3,'2'); % 给串口写入数据
+                    fclose(sr3); %关闭串口
+                    delete(sr3);
+                    clear sr3;
+                    if(0<=app.Gauge.Value&&app.Gauge.Value<240)
+                        if(app.Gauge.Value<=320)
+                        app.Lamp3.Color='green';
+                        end
+                        for i=1:12
+                            app.Gauge.Value= app.Gauge.Value+20;
+                            pause(1);
+                            if(app.Gauge.Value==240)
+                                app.Lamp2.Color='green';
+                                break;
+                            end
+                        end
+                    end
+                    if(app.Gauge.Value>240)
+                        for i=1:12
+                            app.Gauge.Value= app.Gauge.Value-40;
+                            pause(1);
+                        if(app.Gauge.Value<=320)
+                        app.Lamp3.Color='green';
+                        end
+                            if(app.Gauge.Value==240)
+                                app.Lamp2.Color='green';
+                                break;
+                            end
+                        end
+                    end
+                end
+                
+                
+                
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                   if(value=='3')%当速度控制盘的值对应low速
+                    if(app.Gauge.Value~=120)%定速120
+                        app.Lamp2.Color='red';
+                    end
+                    sr3 = serial('COM5'); % 使用默认设置创建串口sr3
+                    fopen(sr3); %打开串口
+                    fprintf(sr3,'3'); % 给串口写入数据
+                    fclose(sr3); %关闭串口
+                    delete(sr3);
+                    clear sr3;
+                    %%
+                    %速度低加速
+                    if(0<=app.Gauge.Value&&app.Gauge.Value<120)     
+                        for i=1:60
+                            app.Gauge.Value= app.Gauge.Value+20;
+                            pause(1);
+                            if(app.Gauge.Value==120)
+                        app.Lamp2.Color='green';
+                                break;
+                            end
+                        end
+                    end
+                   %%
+                   %速度低减速
+                    if(app.Gauge.Value>120)
+                        for i=1:20
+                            app.Gauge.Value= app.Gauge.Value-40;
+                            pause(1);
+                        if(app.Gauge.Value<=320)
+                        app.Lamp3.Color='green';
+                        end
+                            if(app.Gauge.Value==120)
+                        app.Lamp2.Color='green';
+                                break;
+                            end
+                        end
+                    end
+                    end
+        end
+
+        % ToggleSwitch value changed function
+        function ToggleSwitchValueChanged(app)
+            value = app.ToggleSwitch.Value;%开关的值，‘停车’和‘启动’
+            if(value=='停车')
+                sr3 = serial('COM5'); % 使用默认设置创建串口sr3
+                    fopen(sr3); %打开串口
+                    fprintf(sr3,'0'); % 给串口写入数据
+                    fclose(sr3); %关闭串口
+                    delete(sr3);
+                    clear sr3;
+                app.Lamp.Color='red';
+                app.Lamp2.Color='red';
+                app.Lamp3.Color='green';
+                if(app.Gauge.Value~=0)
+                    for i=1:20
+                        app.Gauge.Value= app.Gauge.Value-40;
+                        pause(1);
+                        if(app.Gauge.Value==0)
+                            break;
+                        end
+                    end
+                end
+            end
+            if(value=='启动')
+                app.Lamp.Color='green';
+            end
+
+        end
+    end
+
+    % App initialization and construction
+    methods (Access = private)
+
+        % Create UIFigure and components
+        function createComponents(app)
+
+            % Create UIFigure
+            app.UIFigure = uifigure;
+            app.UIFigure.Position = [100 100 695 324];
+            app.UIFigure.Name = 'UI Figure';
+            setAutoResize(app, app.UIFigure, false)
+
+            % Create LabelDiscreteKnob
+            app.LabelDiscreteKnob = uilabel(app.UIFigure);
+            app.LabelDiscreteKnob.HorizontalAlignment = 'center';
+            app.LabelDiscreteKnob.Position = [451.5 57 48 15];
+            app.LabelDiscreteKnob.Text = '速度控制';
+
+            % Create DiscreteKnob
+            app.DiscreteKnob = uiknob(app.UIFigure, 'discrete');
+            app.DiscreteKnob.ItemsData = {'0', '3', '2', '1'};
+            app.DiscreteKnob.ValueChangedFcn = createCallbackFcn(app, @DiscreteKnobValueChanged);
+            app.DiscreteKnob.Position = [445 87 60 60];
+            app.DiscreteKnob.Value = '0';
+
+            % Create LabelLamp
+            app.LabelLamp = uilabel(app.UIFigure);
+            app.LabelLamp.HorizontalAlignment = 'right';
+            app.LabelLamp.Position = [114 165 36 15];
+            app.LabelLamp.Text = '启动灯';
+
+            % Create Lamp
+            app.Lamp = uilamp(app.UIFigure);
+            app.Lamp.Position = [165 162 20 20];
+
+            % Create LabelToggleSwitch
+            app.LabelToggleSwitch = uilabel(app.UIFigure);
+            app.LabelToggleSwitch.HorizontalAlignment = 'center';
+            app.LabelToggleSwitch.Position = [577.5 57 72 15];
+            app.LabelToggleSwitch.Text = '列车启动按钮';
+
+            % Create ToggleSwitch
+            app.ToggleSwitch = uiswitch(app.UIFigure, 'toggle');
+            app.ToggleSwitch.Items = {'停车', '启动'};
+            app.ToggleSwitch.ValueChangedFcn = createCallbackFcn(app, @ToggleSwitchValueChanged);
+            app.ToggleSwitch.Position = [604 108 20 45];
+            app.ToggleSwitch.Value = '停车';
+
+            % Create LabelGauge
+            app.LabelGauge = uilabel(app.UIFigure);
+            app.LabelGauge.HorizontalAlignment = 'center';
+            app.LabelGauge.Position = [326.5 57 36 15];
+            app.LabelGauge.Text = '速度表';
+
+            % Create Gauge
+            app.Gauge = uigauge(app.UIFigure, 'circular');
+            app.Gauge.Limits = [0 400];
+            app.Gauge.Position = [284 87 120 120];
+
+            % Create LabelLamp2
+            app.LabelLamp2 = uilabel(app.UIFigure);
+            app.LabelLamp2.HorizontalAlignment = 'right';
+            app.LabelLamp2.Position = [42 125 108 15];
+            app.LabelLamp2.Text = '定速航行（可操作）';
+
+            % Create Lamp2
+            app.Lamp2 = uilamp(app.UIFigure);
+            app.Lamp2.Position = [165 122 20 20];
+
+            % Create LabelLamp3
+            app.LabelLamp3 = uilabel(app.UIFigure);
+            app.LabelLamp3.HorizontalAlignment = 'right';
+            app.LabelLamp3.Position = [102 90 48 15];
+            app.LabelLamp3.Text = '速度警报';
+
+            % Create Lamp3
+            app.Lamp3 = uilamp(app.UIFigure);
+            app.Lamp3.Position = [165 87 20 20];
+
+            % Create Label
+            app.Label = uilabel(app.UIFigure);
+            app.Label.HorizontalAlignment = 'center';
+            app.Label.VerticalAlignment = 'center';
+            app.Label.FontName = 'Adobe 宋体 Std L';
+            app.Label.FontSize = 36;
+            app.Label.FontWeight = 'bold';
+            app.Label.Position = [62 240 563 47];
+            app.Label.Text = '轨道交通车-地信息传输系统上位机';
+        end
+    end
+
+    methods (Access = public)
+
+        % Construct app
+        function app = App2()
+
+            % Create and configure components
+            createComponents(app)
+
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
+
+            if nargout == 0
+                clear app
+            end
+        end
+
+        % Code that executes before app deletion
+        function delete(app)
+
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
